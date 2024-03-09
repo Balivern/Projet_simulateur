@@ -2,6 +2,8 @@ from tkinter import *
 from tkinter import messagebox
 import ast
 
+'''A FAIRE lecture d'une lettre qui n'est pas l'alphabet pour l'AFN (AFD aussi?) et scrollbar pour la table de transition de l'AFN'''
+
 # donnees par defaut a afficher dans la table de transition
 global automate, window_ruban, table_frame, deterministe
 
@@ -9,31 +11,32 @@ window_ruban = None
 frame = None
 table_frame = None
 
+deterministe = True
 etats_set = set()
 alpha_set = set()
 transit_dict = {}
-initial = 1
+initial = set()
 accept_set = set()
 automate = (etats_set,alpha_set,transit_dict,initial,accept_set)
 
 def lireMot(aut,mot):
-    (etats,alpha,transit,init,acceptant)=aut
-    lecture=[init]
-    suivant=init
+    (etats,alpha,transit,init_set,accept)=aut
+    lecture=[next(iter(init_set))]
+    suivant=next(iter(init_set))
     for i in mot:
         if (suivant,i) in transit:
-            suivant=transit[(suivant,i)]
+            suivant=next(iter(transit[(suivant,i)]))
             lecture.append(suivant)
         else:
             lecture.append(0)
             return (False,lecture)
-    return (suivant in acceptant,lecture)
+    return (suivant in accept,lecture)
 
 def lireND(aut,mot):
-    (etats,al,T,init,Ac)=aut
+    (etats,alpha,T,init_set,accept)=aut
 
-    L=[init] # Une liste d'ensembles
-    etat=list(init)
+    L=[init_set] # Une liste d'ensembles
+    etat=list(init_set)
     for c in mot:
         etat2=set()
         for e in etat:
@@ -42,10 +45,12 @@ def lireND(aut,mot):
         etat=list(etat2)
         if etat==[]:
             return(False,L)
-    return (etat2.intersection(Ac)!={},L)
+    return (etat2.intersection(accept)!={},L)
         
-def determinise(aut):
-    (etats,alpha,T,init,accept)=aut
+def determinise():
+    global automate, table, table_frame
+
+    (etats,alpha,T,init,accept)=automate
     etatsD={1}
     k=1
     TD = {}
@@ -70,9 +75,20 @@ def determinise(aut):
                 TD[(i,c)]=j
                 if et2.intersection(accept)!=set():
                         acceptD.add(j)
-    print("Liste des états :")
-    print(LM)
-    return (etatsD,alpha,TD,initD,acceptD)
+
+    etats_var.set(str(max(etatsD)))
+    transit_var.set(str(TD))
+    init_var.set(str(initD))
+    accept_var.set(str(acceptD))
+    automate = (etatsD,alpha,TD,initD,acceptD)
+
+    if table_frame and table_frame.winfo_exists():
+        table_frame.destroy()
+    table_frame = Toplevel(fenetre)
+    table_frame.title("Table de transition")
+    table = Table(table_frame)
+
+    interface_ruban()
         
 def complet():
     global automate, table, table_frame
@@ -126,15 +142,15 @@ def emonder():
     
     T2={}
     for (i,c) in T:
-        j=T[i,c]
+        j=next(iter(T[i,c]))
         if i in C and j in C:
-            T2[(bij[i],c)]=bij[j]
+            T2[(bij[i],c)]={bij[j]}
                 
     etats_var.set(str(max(etats2)))
     transit_var.set(str(T2))
-    init_var.set(str(bij[init]))
+    init_var.set(str(bij[next(iter(init))]))
     accept_var.set(str(Ac2)[slice(1,len(str(Ac2))-1)])
-    automate = (etats2,alpha,T2,bij[init],Ac2 )
+    automate = (etats2,alpha,T2,{bij[next(iter(init))]},Ac2 )
 
     if table_frame and table_frame.winfo_exists():
         table_frame.destroy()
@@ -150,7 +166,7 @@ def coAccessible(aut):
     for i in etats:
         for c in alpha:
             if (i,c) in T:
-                j=T[(i,c)]
+                j=next(iter(T[(i,c)]))
                 G[j].append(i)
 
                     
@@ -167,13 +183,13 @@ def coAccessible(aut):
             
 def accessible(aut):
     (etats,alpha,T,init,Ac)=aut
-    Access={init} # joue le rôle de visite
-    L=[init]
+    Access=init # joue le rôle de visite
+    L=[next(iter(init))]
     while L:
         i=L.pop(0)
         for c in alpha:
             if (i,c) in T:
-                j=T[(i,c)]
+                j=next(iter(T[(i,c)]))
                 if not j in Access:
                     Access.add(j)
                     L.append(j)
@@ -212,11 +228,16 @@ def draw_cross(can, x, y):
 
 class Table:
     def __init__(self, frame):
-        global automate, compl, emond, confirm, valid
-        (etats_set,alpha_set,transit_dict,initial,accept_set) = automate
+        global automate, compl, emond, confirm, valid, determ, deterministe
+        (etats_set,alpha_set,transit_dict,init_set,accept_set) = automate
         if transit_dict:
+            for (e,l) in transit_dict:
+                if not isinstance(transit_dict[(e,l)],set) and transit_dict[(e,l)]:
+                    transit_dict[(e,l)] = {transit_dict[(e,l)]}
             entry_width = max(len(v) for v in transit_dict.values())+1
-        else:
+            # si plus d'1 transition possible, l'automate est non déterministe
+            deterministe = deterministe and (entry_width-1)==1
+        else :
             entry_width = 1
         self.entry = {} # Dictionnaire pour stocker tous les widgets Entry correspondant à leur tuple dans la table de transition
         Canvas(frame, height=100, width=100, borderwidth=1, relief='solid').grid(row=0, column=1) # Chaque cases du tableau est composé d'un canvas
@@ -230,7 +251,7 @@ class Table:
             ind+=1
         Canvas(frame, height=100, width=100).grid(row=0, column=ind)
         for etat in etats_set:
-            if etat==initial:
+            if etat in init_set:
                 can_init = Canvas(frame, height=100, width=100)
                 draw_hollow_arrow(can_init, 40, 50) # dessin de la flêche modélisant le/les etat(s) initial(aux)
                 can_init.grid(row=etat, column=0)
@@ -256,8 +277,22 @@ class Table:
         compl = Button(frame, text="Compléter", command=complet)
         emond = Button(frame, text="Émonder", command=emonder)
         confirm = Button(frame, text="Confirmer", command=interface_ruban)
+        determ = Button(frame, text="Determiniser", command=determinise)
 
         valid.grid(row=len(etats_set)+2, column=len(alpha_set)+1, padx=5, pady=3)
+        '''
+        # Création de la Scrollbar verticale
+        vbar = Scrollbar(frame, orient=VERTICAL)
+        vbar.grid(row=0, column=len(alpha_set)+2, sticky='ns')
+        vbar.config(command=frame.yview)
+
+        # Configuration du Canvas pour utiliser la Scrollbar
+        frame.config(yscrollcommand=vbar.set)
+
+        # Configuration du Frame pour permettre le redimensionnement
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+        '''
 
 # Methode de mise a jour de la table de transition
 def update_entries():
@@ -275,13 +310,16 @@ def update_entries():
     transit_var.set(str(transit_dict))
     #affichage des boutons emonder, completer et confirmer
     valid.grid_remove()
-    compl.grid(row=len(etats_set)+2, column=len(alpha_set)-1, padx=5, pady=3)
-    emond.grid(row=len(etats_set)+2, column=len(alpha_set), padx=5, pady=3)
     confirm.grid(row=len(etats_set)+2, column=len(alpha_set)+1, padx=5, pady=3)
+    emond.grid(row=len(etats_set)+2, column=len(alpha_set), padx=5, pady=3)
+    if deterministe:
+        compl.grid(row=len(etats_set)+2, column=len(alpha_set)-1, padx=5, pady=3)
+    else :
+        determ.grid(row=len(etats_set)+2, column=len(alpha_set)-1, padx=5, pady=3)
 
 # Methode de formatage des donnees et création de la fenetre de la table de transition au clique sur le bouton Confirmer
 def create_table():
-    global automate, table, table_frame
+    global automate, table, table_frame, deterministe
     
     # Verification et conversion des donnees etats, alphabet, etat initial, etat acceptant et table de transition
     try :
@@ -306,8 +344,10 @@ def create_table():
             return
         else :
             init_set.add(int(i))
+    # si plus de 1 état initial, l'automate est non déterministe
+    deterministe = deterministe and len(init_set)==1
     # vérification et formatage des états acceptants en ensemble
-    accept_temp = set(accept_var.get().replace('{','').replace('}','').split(','))
+    accept_temp = set(accept_var.get().replace('{','').replace('}','').replace(' ','').split(','))
     accept_set = set()
     for i in accept_temp:
         if (not i.isdigit()):
@@ -323,7 +363,7 @@ def create_table():
         return
     
     # Creation d'une nouvelle table de transition
-    automate = (etats_set,alpha_set,transit_dict,initial,accept_set)
+    automate = (etats_set,alpha_set,transit_dict,init_set,accept_set)
     table_frame = Toplevel(fenetre)
     table_frame.title("Table de transition")
     # Crée une nouvelle table dans la nouvelle fenêtre
@@ -354,13 +394,16 @@ def interface_ruban():
     messagebox.showinfo("C'est prêt !", "Vous pouvez maintenant entrer un mot à lire dans la fenêtre \"Ruban de lecture\".")
 
 def lecture():
-    global fleche_etat
+    global fleche_etat, deterministe
 
     # destuction de tous les widgets de la fenetre ruban
     for widget in window_ruban.winfo_children():
         widget.destroy()
     
-    (acc,liste_etat) = lireMot(automate,mot.get())
+    if deterministe:
+        (acc,liste_etat) = lireMot(automate,mot.get())
+    else :
+        (acc,liste_etat) = lireND(automate,mot.get())
 
     # initialisation à l'état initial du ruban
     init = Canvas(window_ruban, height=50, width=100)
@@ -369,7 +412,7 @@ def lecture():
     cerc_init = Canvas(window_ruban, height=50, width=50)
     cerc_init.grid(row=1, column=1)
     draw_cercle(cerc_init,27,27,20,"black")
-    label_init = Label(window_ruban, text=str(liste_etat[0]))
+    label_init = Label(window_ruban, text=str(liste_etat[0]).replace('{','').replace('}',''))
     label_init.grid(row=1, column=1)
     fleche_etat = Canvas(window_ruban, height=50, width=50)
     fleche_etat.grid(row=2, column=1)
@@ -393,20 +436,20 @@ def next_letter(window_ruban,letter,col,etat,acc,fin):
         if acc:
             can_e = Canvas(window_ruban, height=50, width=50, bg="green")
             can_e.grid(row=1, column=col+1)
-            Label(window_ruban, text=str(etat), bg="green", fg="white").grid(row=1, column=col+1)
+            Label(window_ruban, text=str(etat).replace('{','').replace('}',''), bg="green", fg="white").grid(row=1, column=col+1)
         else :
-            if etat==0:
+            if not etat or etat==0:
                 can_e = Canvas(window_ruban, height=50, width=50, bg="red")
                 can_e.grid(row=1, column=col+1)
                 draw_cross(can_e,27,27)
             else:
                 can_e = Canvas(window_ruban, height=50, width=50, bg="red")
                 can_e.grid(row=1, column=col+1)
-                Label(window_ruban, text=str(etat), bg="red", fg="white").grid(row=1, column=col+1)
+                Label(window_ruban, text=str(etat).replace('{','').replace('}',''), bg="red", fg="white").grid(row=1, column=col+1)
     else :
         can_e = Canvas(window_ruban, height=50, width=50)
         can_e.grid(row=1, column=col+1)
-        Label(window_ruban, text=str(etat)).grid(row=1, column=col+1)
+        Label(window_ruban, text=str(etat).replace('{','').replace('}','')).grid(row=1, column=col+1)
     if etat in accept_set:
         draw_cercle(can_e,27,27,24,"black")
     draw_cercle(can_e,27,27,20,"black")

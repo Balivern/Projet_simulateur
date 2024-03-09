@@ -88,6 +88,8 @@ def emonder():
     transit_var.set(str(T2))
     init_var.set(str(bij[init]))
     accept_var.set(str(Ac2)[slice(1,len(str(Ac2))-1)])
+    print(bij)
+    print(bij[init])
     automate = (etats2,alpha,T2,bij[init],Ac2 )
 
     if table_frame and table_frame.winfo_exists():
