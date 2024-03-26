@@ -88,8 +88,6 @@ def emonder():
     transit_var.set(str(T2))
     init_var.set(str(bij[init]))
     accept_var.set(str(Ac2)[slice(1,len(str(Ac2))-1)])
-    print(bij)
-    print(bij[init])
     automate = (etats2,alpha,T2,bij[init],Ac2 )
 
     if table_frame and table_frame.winfo_exists():
@@ -270,7 +268,7 @@ def create_table():
 
 # Méthode de création de la fenetre du ruban de lecture   
 def interface_ruban():
-    global down_frame, window_ruban, mot, automate, fleche_etat
+    global down_frame, window_ruban, window_ruban2, mot, automate, fleche_etat
 
     if window_ruban and window_ruban.winfo_exists():
         window_ruban.destroy()
@@ -288,6 +286,8 @@ def interface_ruban():
     Button(frame_word, text="Lire", command=lecture).grid(row=0, column=2, padx=5, pady=3)
     window_ruban = Frame(down_frame, height=180, width=400)
     window_ruban.grid(row=2, column=0, padx=10, pady=5)
+    window_ruban2 = Frame(down_frame, height=180, width=400)
+    window_ruban2.grid(row=3, column=0, padx=10, pady=5)
 
     # message à l'utilisateur pour le prevenir de la suite de la démarche à suivre
     messagebox.showinfo("C'est prêt !", "Vous pouvez maintenant entrer un mot à lire dans la fenêtre \"Ruban de lecture\".")
@@ -297,6 +297,9 @@ def lecture():
 
     # destuction de tous les widgets de la fenetre ruban
     for widget in window_ruban.winfo_children():
+        widget.destroy()
+    # destuction de tous les widgets de la fenetre ruban
+    for widget in window_ruban2.winfo_children():
         widget.destroy()
     
     (acc,liste_etat) = lireMot(automate,mot.get())
@@ -310,8 +313,10 @@ def lecture():
     draw_cercle(cerc_init,27,27,20,"black")
     label_init = Label(window_ruban, text=str(liste_etat[0]))
     label_init.grid(row=1, column=1)
-    fleche_etat = Canvas(window_ruban, height=50, width=50)
-    fleche_etat.grid(row=2, column=1)
+    lettre_init = Canvas(window_ruban2, height=50, width=50)
+    lettre_init.grid(row=0, column=0)
+    fleche_etat = Canvas(window_ruban2, height=50, width=50)
+    fleche_etat.grid(row=1, column=1)
     draw_top_arrow(fleche_etat,25,25)
 
     # boucle de lecture du mot
@@ -342,10 +347,16 @@ def next_letter(window_ruban,letter,col,etat,acc,fin):
                 can_e = Canvas(window_ruban, height=50, width=50, bg="red")
                 can_e.grid(row=1, column=col+1)
                 Label(window_ruban, text=str(etat), bg="red", fg="white").grid(row=1, column=col+1)
+        can_l = Canvas(window_ruban2, height=50, width=50, borderwidth=1, relief='solid')
+        can_l.grid(row=0, column=col)
+        Label(window_ruban2, text=letter).grid(row=0, column=col)
     else :
         can_e = Canvas(window_ruban, height=50, width=50)
         can_e.grid(row=1, column=col+1)
         Label(window_ruban, text=str(etat)).grid(row=1, column=col+1)
+        can_l = Canvas(window_ruban2, height=50, width=50, borderwidth=1, relief='solid')
+        can_l.grid(row=0, column=col)
+        Label(window_ruban2, text=letter).grid(row=0, column=col)
     if etat in accept_set:
         draw_cercle(can_e,27,27,24,"black")
     draw_cercle(can_e,27,27,20,"black")
@@ -361,8 +372,8 @@ fenetre = Tk()
 screen_width = fenetre.winfo_screenwidth()
 screen_height = fenetre.winfo_screenheight()
 '''
-screen_width = 600
-screen_height = 600
+screen_width = 800
+screen_height = 750
 fenetre.grid_columnconfigure(0, weight=1)
 fenetre.geometry(f"{screen_width}x{screen_height}")
 fenetre.title("Simulateur d'automate")
