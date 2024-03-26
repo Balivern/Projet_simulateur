@@ -379,7 +379,6 @@ def update_entries():
     else :
         determ.grid(row=2, column=len(alpha_set)+3, padx=5, pady=3)
     
-
 # Methode de formatage des donnees et création de la fenetre de la table de transition au clique sur le bouton Confirmer
 def create_table():
     global automate, table, table_frame, deterministe
@@ -446,8 +445,7 @@ def save_automate():
     saved_automate_frame = Frame(fenetre, width=screen_width/3, height=screen_height/3, bg='grey')
     saved_automate_frame.grid(row=1, column=0, padx=10, pady=5)
 
-    Label(saved_automate_frame, text=nom+" : "+str(automate)).grid(row=0, column=0, padx=5, pady=5)
-
+    Label(saved_automate_frame, text=" "+nom+" : "+str(automate)+" ", borderwidth=1, relief='solid').grid(row=0, column=0, padx=5, pady=5)
 
 # Méthode de création de la fenetre du ruban de lecture
 def interface_ruban():
