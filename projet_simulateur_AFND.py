@@ -1,6 +1,6 @@
 from tkinter import *
-from tkinter import messagebox
-from tkinter import simpledialog
+from tkinter import messagebox, ttk, simpledialog
+from copy import copy
 import ast
 
 # donnees par defaut a afficher dans la table de transition
@@ -20,12 +20,7 @@ initial = set()
 accept_set = set()
 automate = (etats_set,alpha_set,transit_dict,initial,accept_set)
 
-etats_set2 = set()
-alpha_set2 = set()
-transit_dict2 = {}
-initial2 = set()
-accept_set2 = set()
-automate2 = (etats_set2,alpha_set2,transit_dict2,initial2,accept_set2)
+dict_automate = {}
 
 def lireMot(aut,mot):
     (etats,alpha,transit,init_set,accept)=aut
@@ -255,12 +250,134 @@ def accessible(aut):
                     L.append(j)
     return Access            
 
+def somme(A,B): # Effectue la somme de deux automates déterministes A et B. Le résultat sera un Automate fini NON déterministe.
+    (etats1,al1,T1,init1,Ac1)=A
+    (etats2,al2,T2,init2,Ac2)=B
+    if al1!=al2:
+        print("Les deux alphabets doivent être définis sur le même automate")
+        return None
+    else:
+        p=len(etats1)
+        n=p+len(etats2)
+        etats={i+1 for i in range(n)}
+        init={next(iter(init1)),p+next(iter(init2))}
+        Ac=Ac1.union({p+i for i in Ac2})
+        T=dict()
+        for (i,c) in T1:
+            T[(i,c)]={next(iter(T1[(i,c)]))}
+        for (i,c) in T2:
+            T[(p+i,c)]={p+next(iter(T2[(i,c)]))}
+    return (etats,al1,T,init,Ac)
+
+def produit(A,B): # Effectue le produit de deux automates déterministes A et B. Le résultat sera un Automate fini NON déterministe à € transitions.
+    (etats1,al1,T1,init1,Ac1)=A
+    (etats2,al2,T2,init2,Ac2)=B
+    if al1!=al2:
+        print("Les deux alphabets doivent être définis sur le même automate")
+        return None
+    else:
+        #On fait l'union disjointe des deux automates
+        p=len(etats1)
+        n=p+len(etats2)
+        etats={i+1 for i in range(n)}
+        init={next(iter(init1))}        # Seul les états initiaux de A restent initiaux
+        Ac= {i +p for i in Ac2}        # Seul les états acceptants de B restent acceptants
+        al=copy(al1)
+        al.add('€') 
+        T=dict()
+        for (i,c) in T1:
+            T[(i,c)]={next(iter(T1[(i,c)]))}
+        for (i,c) in T2:
+            T[(p+i,c)]={p+next(iter(T2[(i,c)]))}
+        # On ajoute les € transitions
+        for i in Ac1:
+            T[(i,'€')]={p+next(iter(init2))}
+    return (etats,al,T,init,Ac)
+        
+def plus(A): # Calcule l'automate plus de l'automate déterministe A. Le résultat est un Automate fini NON déterministe à € transitions.
+    (etats1,al1,T1,init1,Ac1)=A
+
+    # On autorise les € transitions
+    al=copy(al1)
+    al.add('€')
+    
+    # On non déterminise la table de transition
+    T=dict()
+    for (i,c) in T1:
+        T[(i,c)]={next(iter(T1[(i,c)]))}
+    # On ajoute les € transitions
+    for i in Ac1:
+        T[(i,'€')]={next(iter(init1))}
+    return (etats1,al,T,init1,Ac1)
+
+def etoile(A): # Calcule l'étoile de l'automate déterministe A. Le résultat sera un Automate fini NON déterministe à € transitions.
+    (etats1,al1,T1,init1,Ac1)=A
+    n=len(etats1)
+    # On autorise les € transitions
+    al=copy(al1)
+    al.add('€')
+    # On ajoute un nouvel état initial acceptant
+    etats=set(etats1)
+    etats.add(n+1) 
+    init={next(iter(init1)),n+1}
+    Ac=set(Ac1)
+    Ac.add(n+1)
+    # On non déterminise la table de transition
+    T=dict()
+    for (i,c) in T1:
+        T[(i,c)]={next(iter(T1[(i,c)]))}
+    # On ajoute les € transitions
+    for i in Ac1:
+        T[(i,'€')]={next(iter(init1))}
+    return (etats,al,T,init,Ac)
+
+def inter(A,B): # Effectuant l'intersection de deux automates déterministes A et B en calculant l'automate des couples entre A et B. Le résultat sera un automate déterministe.
+    (etats1,al1,T1,init1,Ac1)=A
+    (etats2,al2,T2,init2,Ac2)=B
+    if al1!=al2:
+        print("Les deux alphabets doivent être définis sur le même automate")
+        return None
+    else:
+        k=1
+        etats={1}
+        init=1
+        bij={(next(iter(init1)),next(iter(init2))):1} # dictionnaire : bijection entre couples d'états et état de l'automate produit 
+        Ac=set()
+        T=dict()
+        L=[(next(iter(init1)),next(iter(init2)))]# liste des états restant à traiter
+        while L:
+            (i,j)=L.pop(0)
+            I=bij[(i,j)]
+            #acceptant?
+            if i in Ac1 and j in Ac2:
+                Ac.add(I)
+            #transitions à partir de cet état
+            for c in al1:
+                if (i,c) in T1 and (j,c) in T2:
+                    a=next(iter(T1[(i,c)]))
+                    b=next(iter(T2[(j,c)]))
+                    # Est-ce un état connu?
+                    if (a,b) in bij:
+                        J=bij[(a,b)]
+                    else:
+                        #Nouvel état
+                        k+=1
+                        etats.add(k)
+                        J=k
+                        bij[(a,b)]=k
+                        L.append((a,b))
+                    T[(I,c)]=J
+            #print(L)
+        #print("Liste des états :")
+        #print([(i,j) for (i,j) in bij])
+    return (etats,al1,T,init,Ac)
+      
 # Trace un cercle de centre (x,y) et de rayon r
-def draw_cercle(can, x, y, r, coul):
+def drawCercle(can, x, y, r, coul):
     can.create_oval(x-r, y-r, x+r, y+r, outline=coul)
 
 # Dessine une flèche creuse centré en (x,y) sur un Canvas can
-def draw_hollow_arrow(can, x, y):
+def drawHollowArrow(can, x, y):
     can.create_line(x-25, y-10, x+25, y-10)
     can.create_line(x-25, y+10, x+25, y+10)
     can.create_line(x-25, y-10, x-25, y+10)
@@ -270,19 +387,19 @@ def draw_hollow_arrow(can, x, y):
     can.create_line(x+25, y+15, x+50, y)
 
 # Dessine une flèche pointé vers le haut centré en (x,y) sur un Canvas can
-def draw_top_arrow(can, x, y):
+def drawTopArrow(can, x, y):
     can.create_line(x, y+15, x, y-15)
     can.create_line(x-5, y-10, x, y-15)
     can.create_line(x+5, y-10, x, y-15)
 
 # Dessine une flèche pointé vers la droite centré en (x,y) sur un Canvas can
-def draw_right_arrow(can, x, y):
+def drawRightArrow(can, x, y):
     can.create_line(x-25, y, x+25, y)
     can.create_line(x+20, y-5, x+25, y)
     can.create_line(x+20, y+5, x+25, y)
 
 # Dessine une croix centré en (x,y) sur un Canvas can
-def draw_cross(can, x, y):
+def drawCross(can, x, y):
     can.create_line(x-15, y-15, x+15, y+15)
     can.create_line(x-15, y+15, x+15, y-15)
 
@@ -291,7 +408,7 @@ class Table:
         global automate, compl, emond, confirm, valid, determ, deterministe
 
         (etats_set,alpha_set,transit_dict,init_set,accept_set) = automate
-
+        
         #scrollbar = Scrollbar(frame)
         
         can_table = Canvas(frame, width=(len(alpha_set)+1)*100, height=(len(etats_set)+1)*100) #, scrollregion=(0,0,(len(alpha_set)+1)*100,(len(etats_set)+1)*100)
@@ -314,10 +431,11 @@ class Table:
         ind_alpha = {} # Dictionnaire { indice de colonne : éléments le l'alphabet }
         ind = 2
         for letter in alpha_set:
-            Canvas(can_table, height=100, width=100, borderwidth=1, relief='solid').grid(row=0, column=ind)
-            Label(can_table, width=1, text=letter, fg='black', font=('Arial', 16, 'bold')).grid(row=0, column=ind)
-            ind_alpha[ind] = letter
-            ind+=1
+            if letter != '€':
+                Canvas(can_table, height=100, width=100, borderwidth=1, relief='solid').grid(row=0, column=ind)
+                Label(can_table, width=1, text=letter, fg='black', font=('Arial', 16, 'bold')).grid(row=0, column=ind)
+                ind_alpha[ind] = letter
+                ind+=1
         Canvas(can_table, height=100, width=100, borderwidth=1, relief='solid').grid(row=0, column=ind)
         Label(can_table, width=1, text='€', fg='black', font=('Arial', 16, 'bold')).grid(row=0, column=ind)
         ind_alpha[ind] = '€'
@@ -325,11 +443,11 @@ class Table:
         for etat in etats_set:
             if etat in init_set:
                 can_init = Canvas(can_table, height=100, width=100)
-                draw_hollow_arrow(can_init, 40, 50) # dessin de la flêche modélisant le/les etat(s) initial(aux)
+                drawHollowArrow(can_init, 40, 50) # dessin de la flêche modélisant le/les etat(s) initial(aux)
                 can_init.grid(row=etat, column=0)
             if etat in accept_set:
                 can_acc = Canvas(can_table, height=100, width=100, borderwidth=1, relief='solid')
-                draw_cercle(can_acc, 52, 52, 20, "black") # cercle entourant l'etat ou les etats acceptant(s)
+                drawCercle(can_acc, 52, 52, 20, "black") # cercle entourant l'etat ou les etats acceptant(s)
                 can_acc.grid(row=etat, column=1)
             else :
                 Canvas(can_table, height=100, width=100, borderwidth=1, relief='solid').grid(row=etat, column=1)
@@ -345,10 +463,10 @@ class Table:
                 ind+=1
             Canvas(can_table, height=100, width=100).grid(row=etat, column=ind)
 
-        valid = Button(can_table, text="Valider la table\nde transition", command=update_entries)
+        valid = Button(can_table, text="Valider la table\nde transition", command=updateEntries)
         compl = Button(can_table, text="Compléter", command=complet)
         emond = Button(can_table, text="Émonder", command=emonder)
-        confirm = Button(can_table, text="Confirmer", command=interface_ruban)
+        confirm = Button(can_table, text="Confirmer", command=interfaceRuban)
         determ = Button(can_table, text="Determiniser", command=determinise)
 
         valid.grid(row=1, column=len(alpha_set)+3, padx=5, pady=3)
@@ -357,7 +475,7 @@ class Table:
         #scrollbar.pack(side = RIGHT, fill=Y )
 
 # Methode de mise a jour de la table de transition
-def update_entries():
+def updateEntries():
     global automate, table
     (etats_set,alpha_set,transit_dict,initial,accept_set) = automate
 
@@ -380,15 +498,15 @@ def update_entries():
         determ.grid(row=2, column=len(alpha_set)+3, padx=5, pady=3)
     
 # Methode de formatage des donnees et création de la fenetre de la table de transition au clique sur le bouton Confirmer
-def create_table():
+def createTable():
     global automate, table, table_frame, deterministe
     
     # Verification et conversion des donnees etats, alphabet, etat initial, etat acceptant et table de transition
     try :
-        if (transit.get()==""):
+        if (transit_var.get()==""):
             transit_dict = {}
         else :
-            transit_dict = ast.literal_eval(transit.get())
+            transit_dict = ast.literal_eval(transit_var.get().replace(' ',''))
     except SyntaxError:
         transit_dict = {}
     # vérification et formatage des états en ensemble
@@ -398,7 +516,7 @@ def create_table():
     else : 
         etats_set = {i for i in range(1,int(etats_var.get())+1)}
     # vérification et formatage des états initiaux en ensemble
-    init_temp = set(init_var.get().replace('{','').replace('}','').split(','))
+    init_temp = set(init_var.get().replace('{','').replace('}','').replace(' ','').split(','))
     init_set = set()
     for i in init_temp:
         if (not i.isdigit()):
@@ -417,7 +535,7 @@ def create_table():
             return
         else :
             accept_set.add(int(i))
-    alpha_set = set(alpha.get().split(','))
+    alpha_set = set(alpha_var.get().replace('{','').replace('}','').replace('\'','').replace(' ','').split(','))
     
     etat_max = int(etats_var.get())
     if (not max(init_set)<=etat_max or not max(accept_set)<=etat_max):
@@ -431,24 +549,87 @@ def create_table():
     # Crée une nouvelle table dans la nouvelle fenêtre
     table = Table(table_frame)
 
-# Méthode permettant de sauvegarder un automate
-def save_automate():
-    global saved_automate_frame
+def selectedAutomate(event=None):
+    global etats_var, transit_var, init_var, accept_var, dict_automate, saved_automate
 
-    nom = simpledialog.askstring("Entrez un mot", "Veuillez entrer un nom pour votre automate :", initialvalue="Automate1")
+    selection = saved_automate.get()
+    etats_var.set(len(dict_automate[selection][0]))
+    init_var.set(dict_automate[selection][3])
+    accept_var.set(dict_automate[selection][4])
+    transit_var.set(dict_automate[selection][2])
+
+def operer():
+    global automate, saved_automate,saved_automate2,selectOperation, etats_var, transit_var, init_var, accept_var, alpha_var
+
+    if saved_automate.get()!="" and selectOperation.get()!="":
+        aut1 = dict_automate[saved_automate.get()]
+        if saved_automate2.get()!="":
+            aut2 = dict_automate[saved_automate2.get()]
+            if selectOperation.get()=="somme":
+                automate = somme(aut1,aut2)
+            elif selectOperation.get()=="produit":
+                automate = produit(aut1,aut2)
+            elif selectOperation.get()=="intersection":
+                automate = inter(aut1,aut2)
+        else :
+            if selectOperation.get()=="plus":
+                automate = plus(aut1)
+            elif selectOperation.get()=="etoile":
+                automate = etoile(aut1)
+        etats_var.set(len(automate[0]))
+        alpha_var.set(automate[1])
+        transit_var.set(automate[2])
+        init_var.set(automate[3])
+        accept_var.set(automate[4])
+        createTable()
+    else :
+        messagebox.showerror("Erreur", "Opération non valide pour cet/ces automate(s)")
+
+def interfaceOperation():
+    global selectOperation,saved_automate2
+
+    btn_operation.grid_remove()
+        
+    selectOperation.grid(row=0, column=1, padx=5, pady=5)
+    saved_automate2.grid(row=0, column=2, padx=5, pady=5)
+
+    btn_operer = Button(saved_automate_frame, text="Opérer", command=operer)
+    btn_operer.grid(row=0, column=3, padx=5, pady=5)
+
+# Méthode permettant de sauvegarder un automate
+def saveAutomate():
+    global saved_automate_frame, saved_automate, saved_automate2, dict_automate, btn_operation, selectOperation
+
+    nom = simpledialog.askstring("Entrez un mot", "Veuillez entrer un nom pour votre automate :", initialvalue="Automate"+str(len(dict_automate)+1))
     if nom is None:
         return # Si l'utilisateur annule la boîte de dialogue, on ne fait rien
     
     if saved_automate_frame and saved_automate_frame.winfo_exists():
         saved_automate_frame.destroy()
 
+    save_btn.grid_remove()
+
     saved_automate_frame = Frame(fenetre, width=screen_width/3, height=screen_height/3, bg='grey')
     saved_automate_frame.grid(row=1, column=0, padx=10, pady=5)
 
-    Label(saved_automate_frame, text=" "+nom+" : "+str(automate)+" ", borderwidth=1, relief='solid').grid(row=0, column=0, padx=5, pady=5)
+    selectOperation = ttk.Combobox(saved_automate_frame, state="readonly", values=["plus","etoile"])
+
+    dict_automate[nom]=automate
+    btn_operation = Button(saved_automate_frame, text="Effectuer des opérations", command=interfaceOperation)
+    btn_operation.grid(row=0, column=1, padx=5, pady=5)
+
+    liste_automates = [nom for nom in dict_automate]
+    saved_automate = ttk.Combobox(saved_automate_frame, state="readonly", values = liste_automates)
+    saved_automate.current(0)
+    saved_automate.grid(row=0, column=0, padx=5, pady=5)
+    saved_automate.bind('<<ComboboxSelected>>', selectedAutomate)
+
+    liste_automates.append("")
+    saved_automate2 = ttk.Combobox(saved_automate_frame, state="readonly", values = liste_automates)
+    saved_automate2.bind('<<ComboboxSelected>>', lambda event: selectOperation.config(values=["plus","etoile"]) if saved_automate2.get() == "" else selectOperation.config(values=["somme","produit","intersection"]))
 
 # Méthode de création de la fenetre du ruban de lecture
-def interface_ruban():
+def interfaceRuban():
     global down_frame, window_ruban, window_ruban2, mot, automate, fleche_etat, save_btn
 
     save_btn.grid(row=5, column=0, padx=5, pady=3)
@@ -495,32 +676,32 @@ def lecture():
     # initialisation à l'état initial du ruban
     init = Canvas(window_ruban, height=50, width=100)
     init.grid(row=1, column=0)
-    draw_hollow_arrow(init, 45,25)
+    drawHollowArrow(init, 45,25)
     cerc_init = Canvas(window_ruban, height=50, width=50)
     cerc_init.grid(row=1, column=1)
-    draw_cercle(cerc_init,27,27,20,"black")
+    drawCercle(cerc_init,27,27,20,"black")
     label_init = Label(window_ruban, text=str(liste_etat[0]).replace('{','').replace('}',''))
     label_init.grid(row=1, column=1)
     lettre_init = Canvas(window_ruban2, height=50, width=50)
     lettre_init.grid(row=0, column=0)
     fleche_etat = Canvas(window_ruban2, height=50, width=50)
     fleche_etat.grid(row=1, column=1)
-    draw_top_arrow(fleche_etat,25,25)
+    drawTopArrow(fleche_etat,25,25)
 
     # boucle de lecture du mot
     (col,ind) = (3,1)
     for letter in mot.get():
         delay = 700 * (ind+1)
-        window_ruban.after(delay, lambda l=letter, c=col, n=liste_etat[ind], fin=(ind==(len(liste_etat)-1)): next_letter(window_ruban,l,c,n,acc,fin))
+        window_ruban.after(delay, lambda l=letter, c=col, n=liste_etat[ind], fin=(ind==(len(liste_etat)-1)): nextLetter(window_ruban,l,c,n,acc,fin))
         (col,ind) = (col+2,ind+1)
     
 # Méthode d'affichage des widgets pour chaque lettre du mot
-def next_letter(window_ruban,letter,col,etat,acc,fin):
+def nextLetter(window_ruban,letter,col,etat,acc,fin):
     (etats_set,alpha_set,transit_dict,initial,accept_set) = automate
     Label(window_ruban, text=str(letter)).grid(row=0, column=col)
     can = Canvas(window_ruban, height=50, width=100)
     can.grid(row=1, column=col)
-    draw_right_arrow(can,50,25)
+    drawRightArrow(can,50,25)
     if fin:
         if acc:
             can_e = Canvas(window_ruban, height=50, width=50, bg="green")
@@ -530,7 +711,7 @@ def next_letter(window_ruban,letter,col,etat,acc,fin):
             if not etat or etat==0:
                 can_e = Canvas(window_ruban, height=50, width=50, bg="red")
                 can_e.grid(row=1, column=col+1)
-                draw_cross(can_e,27,27)
+                drawCross(can_e,27,27)
             else:
                 can_e = Canvas(window_ruban, height=50, width=50, bg="red")
                 can_e.grid(row=1, column=col+1)
@@ -546,8 +727,8 @@ def next_letter(window_ruban,letter,col,etat,acc,fin):
         can_l.grid(row=0, column=col)
         Label(window_ruban2, text=letter).grid(row=0, column=col)
     if etat.intersection(accept_set):
-        draw_cercle(can_e,27,27,24,"black")
-    draw_cercle(can_e,27,27,20,"black")
+        drawCercle(can_e,27,27,24,"black")
+    drawCercle(can_e,27,27,20,"black")
     fleche_etat.grid(row=2, column=col+1)
 
 # nombre total de lignes et de colonnes dans la liste
@@ -579,6 +760,7 @@ tool_bar.grid(row=1, column=0, padx=5, pady=5)
 
 # Association d'une variable StringVar à chaque Entry pour gérer leur mise à jour
 etats_var = StringVar()
+alpha_var = StringVar()
 init_var = StringVar()
 accept_var = StringVar()
 transit_var = StringVar()
@@ -587,7 +769,7 @@ Label(tool_bar, text="Nombre d'états (un entier)").grid(row=0, column=0, padx=5
 etats = Entry(tool_bar, textvariable=etats_var)
 etats.grid(row=0, column=1, padx=5, pady=5)
 Label(tool_bar, text="Alphabet (exemple : a,b)").grid(row=1, column=0, padx=5, pady=5)
-alpha = Entry(tool_bar)
+alpha = Entry(tool_bar, textvariable=alpha_var)
 alpha.grid(row=1, column=1, padx=5, pady=5)
 Label(tool_bar, text="Etat initial(aux) ((exemple : 1,2))").grid(row=2, column=0, padx=5, pady=5)
 init = Entry(tool_bar, textvariable=init_var)
@@ -598,7 +780,7 @@ accept.grid(row=3, column=1, padx=5, pady=5)
 Label(tool_bar, text="Table de transition\n(optionnel, exemple : {(1,'a'): {1}, (1,'b'): {1,2}...}").grid(row=4, column=0, padx=5, pady=5)
 transit = Entry(tool_bar, textvariable=transit_var)
 transit.grid(row=4, column=1, padx=5, pady=5)
-save_btn = Button(tool_bar, text="Enregistrer l'automate", command=save_automate)
-Button(tool_bar, text="Confirmer", command=create_table).grid(row=5, column=1, padx=5, pady=3)
+save_btn = Button(tool_bar, text="Enregistrer l'automate", command=saveAutomate)
+Button(tool_bar, text="Confirmer", command=createTable).grid(row=5, column=1, padx=5, pady=3)
 
 fenetre.mainloop()
