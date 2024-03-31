@@ -22,7 +22,7 @@ automate = (etats_set,alpha_set,transit_dict,initial,accept_set)
 
 dict_automate = {}
 
-def lireMot(aut,mot):
+def lireMot(aut,mot): # Renvoi la lecture du mot mot par l'automate aut sous la forme d'un tuple (booleen = mot accepter par aut?,liste = liste d'état)
     (etats,alpha,transit,init_set,accept)=aut
     lecture=[next(iter(init_set))]
     suivant=next(iter(init_set))
@@ -35,7 +35,7 @@ def lireMot(aut,mot):
             return (False,lecture)
     return (suivant in accept,lecture)
 
-def lireND(aut,mot):
+def lireND(aut,mot): # Renvoi la lecture du mot mot par l'automate aut sous la forme d'un tuple (booleen = mot accepter par aut?,liste = liste d'ensemble d'état)
     (etats,alpha,T,init_set,accept)=aut
 
     L=[init_set] # Une liste d'ensembles
@@ -54,12 +54,12 @@ def lireND(aut,mot):
             return(False,L)
     return (etat2.intersection(accept)!={},L)
 
-def lireNDe(aut,m):
+def lireNDe(aut,mot): # Renvoi la lecture du mot mot par l'automate aut sous la forme d'un tuple (booleen = mot accepter par aut?,liste = liste d'ensemble d'état)
     (etats,al,T,init,Ac)=aut
     Cl={i:cloture(aut,i) for i in etats} #On calcule une bonne fois toute les clôtures
     L=[init] # Une liste d'ensembles
     et=list(init)
-    for c in m: # On calcule l'ensemble des états accessibles par lecture de la lettre c à partir d'un des états actuels
+    for c in mot: # On calcule l'ensemble des états accessibles par lecture de la lettre c à partir d'un des états actuels
         et2=set()
         for i in et:
             for e in Cl[i]: #On calcule les transitions étendues à toute la clôture
@@ -76,8 +76,7 @@ def lireNDe(aut,m):
             Ac2.add(e)
     return (et2.intersection(Ac2)!={},L)
 
-# Fonction qui prend un automate et un etat sous forme d'entier, et renvoi la cloture de l'etat i dans l'automate
-def cloture(aut,i):
+def cloture(aut,i): # Fonction qui prend un automate et un etat sous forme d'entier, et renvoi la cloture de l'etat i dans l'automate
     (etats,al,T,init,Ac)=aut
 
     Cl={i} # La clôture de l'état i
@@ -372,12 +371,10 @@ def inter(A,B): # Effectuant l'intersection de deux automates déterministes A e
         #print([(i,j) for (i,j) in bij])
     return (etats,al1,T,init,Ac)
       
-# Trace un cercle de centre (x,y) et de rayon r
-def drawCercle(can, x, y, r, coul):
+def drawCercle(can, x, y, r, coul): # Trace un cercle de centre (x,y) et de rayon r
     can.create_oval(x-r, y-r, x+r, y+r, outline=coul)
 
-# Dessine une flèche creuse centré en (x,y) sur un Canvas can
-def drawHollowArrow(can, x, y):
+def drawHollowArrow(can, x, y): # Dessine une flèche creuse centré en (x,y) sur un Canvas can
     can.create_line(x-25, y-10, x+25, y-10)
     can.create_line(x-25, y+10, x+25, y+10)
     can.create_line(x-25, y-10, x-25, y+10)
@@ -386,20 +383,17 @@ def drawHollowArrow(can, x, y):
     can.create_line(x+25, y-15, x+50, y)
     can.create_line(x+25, y+15, x+50, y)
 
-# Dessine une flèche pointé vers le haut centré en (x,y) sur un Canvas can
-def drawTopArrow(can, x, y):
+def drawTopArrow(can, x, y): # Dessine une flèche pointé vers le haut centré en (x,y) sur un Canvas can
     can.create_line(x, y+15, x, y-15)
     can.create_line(x-5, y-10, x, y-15)
     can.create_line(x+5, y-10, x, y-15)
 
-# Dessine une flèche pointé vers la droite centré en (x,y) sur un Canvas can
-def drawRightArrow(can, x, y):
+def drawRightArrow(can, x, y): # Dessine une flèche pointé vers la droite centré en (x,y) sur un Canvas can
     can.create_line(x-25, y, x+25, y)
     can.create_line(x+20, y-5, x+25, y)
     can.create_line(x+20, y+5, x+25, y)
 
-# Dessine une croix centré en (x,y) sur un Canvas can
-def drawCross(can, x, y):
+def drawCross(can, x, y): # Dessine une croix centré en (x,y) sur un Canvas can
     can.create_line(x-15, y-15, x+15, y+15)
     can.create_line(x-15, y+15, x+15, y-15)
 
@@ -474,8 +468,7 @@ class Table:
         can_table.pack( side = LEFT, fill = BOTH ,expand=True)
         #scrollbar.pack(side = RIGHT, fill=Y )
 
-# Methode de mise a jour de la table de transition
-def updateEntries():
+def updateEntries(): # Methode de mise a jour de la table de transition
     global automate, table
     (etats_set,alpha_set,transit_dict,initial,accept_set) = automate
 
@@ -497,8 +490,7 @@ def updateEntries():
     else :
         determ.grid(row=2, column=len(alpha_set)+3, padx=5, pady=3)
     
-# Methode de formatage des donnees et création de la fenetre de la table de transition au clique sur le bouton Confirmer
-def createTable():
+def createTable(): # Methode de formatage des donnees et création de la fenetre de la table de transition au clique sur le bouton Confirmer
     global automate, table, table_frame, deterministe
     
     # Verification et conversion des donnees etats, alphabet, etat initial, etat acceptant et table de transition
@@ -596,8 +588,7 @@ def interfaceOperation():
     btn_operer = Button(saved_automate_frame, text="Opérer", command=operer)
     btn_operer.grid(row=0, column=3, padx=5, pady=5)
 
-# Méthode permettant de sauvegarder un automate
-def saveAutomate():
+def saveAutomate(): # Méthode permettant de sauvegarder un automate
     global saved_automate_frame, saved_automate, saved_automate2, dict_automate, btn_operation, selectOperation
 
     nom = simpledialog.askstring("Entrez un mot", "Veuillez entrer un nom pour votre automate :", initialvalue="Automate"+str(len(dict_automate)+1))
@@ -628,8 +619,8 @@ def saveAutomate():
     saved_automate2 = ttk.Combobox(saved_automate_frame, state="readonly", values = liste_automates)
     saved_automate2.bind('<<ComboboxSelected>>', lambda event: selectOperation.config(values=["plus","etoile"]) if saved_automate2.get() == "" else selectOperation.config(values=["somme","produit","intersection"]))
 
-# Méthode de création de la fenetre du ruban de lecture
-def interfaceRuban():
+
+def interfaceRuban(): # Méthode de création de la fenetre du ruban de lecture
     global down_frame, window_ruban, window_ruban2, mot, automate, fleche_etat, save_btn
 
     save_btn.grid(row=5, column=0, padx=5, pady=3)
@@ -695,8 +686,7 @@ def lecture():
         window_ruban.after(delay, lambda l=letter, c=col, n=liste_etat[ind], fin=(ind==(len(liste_etat)-1)): nextLetter(window_ruban,l,c,n,acc,fin))
         (col,ind) = (col+2,ind+1)
     
-# Méthode d'affichage des widgets pour chaque lettre du mot
-def nextLetter(window_ruban,letter,col,etat,acc,fin):
+def nextLetter(window_ruban,letter,col,etat,acc,fin): # Méthode d'affichage des widgets pour chaque lettre du mot
     (etats_set,alpha_set,transit_dict,initial,accept_set) = automate
     Label(window_ruban, text=str(letter)).grid(row=0, column=col)
     can = Canvas(window_ruban, height=50, width=100)
