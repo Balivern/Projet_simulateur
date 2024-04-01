@@ -460,7 +460,7 @@ class Table:
         valid = Button(can_table, text="Valider la table\nde transition", command=updateEntries)
         compl = Button(can_table, text="Compléter", command=complet)
         emond = Button(can_table, text="Émonder", command=emonder)
-        confirm = Button(can_table, text="Confirmer", command=interfaceRuban)
+        confirm = Button(can_table, text="Fermer la fenêtre", command=interfaceRuban)
         determ = Button(can_table, text="Determiniser", command=determinise)
 
         valid.grid(row=1, column=len(alpha_set)+3, padx=5, pady=3)
@@ -621,10 +621,12 @@ def saveAutomate(): # Méthode permettant de sauvegarder un automate
 
 
 def interfaceRuban(): # Méthode de création de la fenetre du ruban de lecture
-    global down_frame, window_ruban, window_ruban2, mot, automate, fleche_etat, save_btn
+    global table_frame, down_frame, window_ruban, window_ruban2, mot, automate, fleche_etat, save_btn
 
     save_btn.grid(row=5, column=0, padx=5, pady=3)
 
+    if table_frame and table_frame.winfo_exists():
+        table_frame.destroy()
     if window_ruban and window_ruban.winfo_exists():
         window_ruban.destroy()
     if down_frame and down_frame.winfo_exists():
